@@ -32,6 +32,7 @@ TaskHandle_t Handle_aTask;
 TaskHandle_t Handle_bTask;
 TaskHandle_t Handle_cTask;
 TaskHandle_t Handle_monitorTask;
+Adafruit_NeoPixel pixel(LED_COUNT, LED_PIN, NEO_GRBW + NEO_KHZ800);
 
 //**************************************************************************
 // Can use these function for RTOS delays
@@ -92,13 +93,17 @@ static void threadB( void *pvParameters )
 
 static void threadC( void *pvParameters ) {
 
-// Declare our NeoPixel strip object:
-    Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRBW + NEO_KHZ800);
-    strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
-    strip.show();            // Turn OFF all pixels ASAP
-
+    SERIAL.println("Thread C: Started");
     while(1) {
-        strip.setPixelColor(0, strip.Color(255,0,0));
+        pixel.setPixelColor(0, pixel.Color(255,0,0));
+        pixel.show();
+        myDelayMs(1000);
+        pixel.setPixelColor(0, pixel.Color(0,255,0));
+        pixel.show();
+        myDelayMs(1000);
+        pixel.setPixelColor(0, pixel.Color(0,0,255));
+        pixel.show();
+        myDelayMs(1000);
     }
 }
 
@@ -183,7 +188,8 @@ void taskMonitor(void *pvParameters)
 void setup()
 {
 
-    SERIAL.begin(115200);
+    SERIAL.begin(9600);
+    pixel.begin();
 
     delay(1000); // prevents usb driver crash on startup, do not omit this
     while (!SERIAL) ;  // Wait for serial terminal to open port before starting program
@@ -202,11 +208,14 @@ void setup()
     //               Probably ran out of heap.
     //    1 blink  - Stack overflow, Task needs more bytes defined for its stack!
     //               Use the taskMonitor thread to help gauge how much more you need
-    vSetErrorLed(ERROR_LED_PIN, ERROR_LED_LIGHTUP_STATE);
+    //vSetErrorLed(ERROR_LED_PIN, ERROR_LED_LIGHTUP_STATE);
 
     // sets the serial port to print errors to when the rtos crashes
     // if this is not set, serial information is not printed by default
-    vSetErrorSerial(&SERIAL);
+    //vSetErrorSerial(&SERIAL);
+
+    SERIAL.println("Setup LED and SERIAL error");
+    SERIAL.flush();
 
     // Create the threads that will be managed by the rtos
     // Sets the stack size and priority of each task
@@ -215,6 +224,9 @@ void setup()
     xTaskCreate(threadB,     "Task B",       256, NULL, tskIDLE_PRIORITY + 2, &Handle_bTask);
     xTaskCreate(threadC,     "Task C",       256, NULL, tskIDLE_PRIORITY + 4, &Handle_cTask);
     xTaskCreate(taskMonitor, "Task Monitor", 256, NULL, tskIDLE_PRIORITY + 1, &Handle_monitorTask);
+
+    SERIAL.println("Created tasks");
+    SERIAL.flush();
 
     // Start the RTOS, this function will never return and will schedule the tasks.
     vTaskStartScheduler();
@@ -241,6 +253,5 @@ void loop()
     SERIAL.flush();
     delay(100); //delay is interrupt friendly, unlike vNopDelayMS
 }
-
 
 //*****************************************************************
